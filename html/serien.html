@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>akk1TV - Serien</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:       #0c0d0f;
+    --surface:  #14161a;
+    --border:   #1e2028;
+    --accent:   #f5c518; /* IMDb yellow */
+    --accent2:  #e05c4b;
+    --text:     #e2e4ea;
+    --muted:    #5a5e6e;
+    --green:    #4caf7d;
+    --radius:   6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 28px 36px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(245,197,24,.35);
+  }
+  .subtitle { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 3px; color: var(--accent); text-shadow: 0 0 30px rgba(245,197,24,.35); }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px 36px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: rgba(20,22,26,.7);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+  .controls input[type=text],
+  .controls select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    border-radius: var(--radius);
+    padding: 7px 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .controls input[type=text]:focus,
+  .controls select:focus { border-color: var(--accent); }
+  .controls input[type=text] { width: 220px; }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .stats {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-height: 60vh;
+    text-align: center;
+    padding: 40px;
+  }
+  .upload-zone .icon {
+    font-size: 3rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 20px rgba(245,197,24,.4));
+  }
+  .upload-zone h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+  .upload-zone p { color: var(--muted); font-size: 12px; line-height: 1.7; max-width: 420px; }
+  .drop-target {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 48px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .drop-target:hover,
+  .drop-target.drag-over {
+    border-color: var(--accent);
+    background: rgba(245,197,24,.04);
+  }
+  .drop-target input { display: none; }
+
+  /* ── Table ── */
+  .table-wrap {
+    padding: 16px 36px 40px;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color .15s;
+  }
+  thead th:hover { color: var(--text); }
+  thead th.sort-asc::after  { content: ' ↑'; color: var(--accent); }
+  thead th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,.03); }
+
+  td {
+    padding: 11px 14px;
+    vertical-align: middle;
+  }
+
+  .rank { color: var(--muted); font-size: 11px; width: 36px; }
+
+  .poster-cell { width: 52px; padding: 6px 10px; }
+  .poster-cell img {
+    width: 38px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 3px;
+    display: block;
+  }
+  .poster-placeholder {
+    width: 38px; height: 56px;
+    background: var(--border);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 18px;
+  }
+
+  .title-cell { min-width: 180px; }
+  .title-main {
+    font-weight: 500;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+  .title-main a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .title-main a:hover { color: var(--accent); }
+  .title-folder { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .title-links { display: flex; gap: 5px; margin-top: 4px; }
+  .title-links a {
+    font-size: 9px; font-weight: 500; letter-spacing: .5px; text-decoration: none;
+    padding: 2px 6px; border-radius: 3px; border: 1px solid;
+    transition: opacity .15s;
+  }
+  .title-links a:hover { opacity: .75; }
+  .link-imdb  { color: #f5c518; border-color: #f5c518; }
+  .link-tmdb  { color: #01b4e4; border-color: #01b4e4; }
+
+  .rating-cell { white-space: nowrap; }
+  .star { color: var(--accent); margin-right: 4px; }
+  .rating-val {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .rating-na { color: var(--muted); }
+
+  .rating-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+  }
+  .rating-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .rating-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  .genre-tag {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin: 1px 2px;
+  }
+
+  .votes { color: var(--muted); font-size: 11px; }
+  .seasons { color: var(--muted); font-size: 11px; }
+
+  /* ── Episode check ── */
+  .ep-status { font-size: 11px; white-space: nowrap; }
+  .ep-ok     { color: var(--green); }
+  .ep-warn   { color: var(--accent2); cursor: pointer; }
+  .ep-none   { color: var(--muted); }
+
+  .ep-detail {
+    display: none;
+    background: rgba(20,22,26,.95);
+    border-top: 1px solid var(--border);
+  }
+  .ep-detail.open { display: table-row; }
+  .ep-detail td {
+    padding: 10px 14px 10px 80px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+  .ep-detail .season-row { margin-bottom: 4px; }
+  .ep-detail .season-label { color: var(--text); font-weight: 500; margin-right: 6px; }
+  .ep-detail .missing-eps { color: var(--accent2); }
+  .ep-detail .complete-eps { color: var(--green); }
+
+  /* ── Tooltip / plot ── */
+  .title-main[data-plot] { position: relative; }
+  .title-main[data-plot]:hover::after {
+    content: attr(data-plot);
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    width: 280px;
+    background: #1f2129;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text);
+    z-index: 100;
+    pointer-events: none;
+    white-space: normal;
+  }
+
+  /* rating colour gradient */
+  .fill-high   { background: var(--green); }
+  .fill-mid    { background: var(--accent); }
+  .fill-low    { background: var(--accent2); }
+  .fill-none   { background: var(--muted); }
+
+  /* ── Demo banner ── */
+  .demo-bar {
+    background: rgba(245,197,24,.1);
+    border-bottom: 1px solid rgba(245,197,24,.2);
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: .5px;
+    padding: 8px 36px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .demo-bar span { color: var(--muted); }
+
+  #main-content { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>akk1TV</h1>
+    <div class="subtitle">Serien</div>
+  </div>
+</header>
+
+<!-- Main viewer -->
+<div id="main-content">
+  <div id="error-bar" class="demo-bar" style="display:none; background:rgba(224,92,75,.1); border-color:rgba(224,92,75,.2); color:var(--accent2);">
+    ⚠ serien.json konnte nicht geladen werden — bitte zuerst fetch_ratings.py ausführen.
+  </div>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search title…" />
+    <select id="genre-filter"><option value="">All genres</option></select>
+    <select id="ep-filter">
+      <option value="">All statuses</option>
+      <option value="missing">Missing episodes</option>
+      <option value="complete">Complete</option>
+      <option value="unchecked">Not checked</option>
+    </select>
+    <select id="sort-field">
+      <option value="imdb">Sort by IMDb Rating</option>
+      <option value="title">Sort by Title</option>
+      <option value="year">Sort by Year</option>
+      <option value="votes">Sort by Votes</option>
+      <option value="seasons">Sort by Seasons</option>
+      <option value="episodes">Sort by Episodes</option>
+    </select>
+    <select id="sort-dir">
+      <option value="desc">Highest first</option>
+      <option value="asc">Lowest first</option>
+    </select>
+    <button class="btn secondary" id="reset-btn">Reset</button>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead id="thead">
+        <tr>
+          <th class="rank">#</th>
+          <th></th>
+          <th data-col="title">Title</th>
+          <th data-col="year">Year</th>
+          <th data-col="imdb">IMDb ★</th>
+          <th>Rating bar</th>
+          <th data-col="votes">Votes</th>
+          <th>Genre</th>
+          <th data-col="seasons">Seasons</th>
+          <th data-col="episodes">Episodes</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const DEMO = [
+  {folder:"Breaking.Bad",title:"Breaking Bad",year:"2008–2013",genre:"Crime, Drama, Thriller",imdb:"9.5",votes:"2,257,460",plot:"A chemistry teacher diagnosed with cancer turns to manufacturing meth.",poster:"",imdb_id:"tt0903747",seasons:"5",rated:"TV-MA"},
+  {folder:"The.Wire",title:"The Wire",year:"2002–2008",genre:"Crime, Drama, Thriller",imdb:"9.3",votes:"387,050",plot:"The Baltimore drug scene as seen through the eyes of drug dealers and law enforcement.",poster:"",imdb_id:"tt0306414",seasons:"5",rated:"TV-MA"},
+  {folder:"Chernobyl",title:"Chernobyl",year:"2019",genre:"Drama, History, Thriller",imdb:"9.4",votes:"855,492",plot:"A dramatization of the Chernobyl nuclear accident and its aftermath.",poster:"",imdb_id:"tt7366338",seasons:"1",rated:"TV-MA"},
+  {folder:"The.Boys",title:"The Boys",year:"2019–",genre:"Action, Comedy, Crime",imdb:"8.7",votes:"574,281",plot:"Superheroes are managed by a corporation that hides their dark sides.",poster:"",imdb_id:"tt1190634",seasons:"4",rated:"TV-MA"},
+  {folder:"Severance",title:"Severance",year:"2022–",genre:"Drama, Mystery, Sci-Fi",imdb:"8.7",votes:"308,472",plot:"Workers have had their memories surgically divided between work and home.",poster:"",imdb_id:"tt11280740",seasons:"2",rated:"TV-MA"},
+  {folder:"Succession",title:"Succession",year:"2018–2023",genre:"Drama",imdb:"8.9",votes:"494,810",plot:"The Roy family controls one of the biggest media companies in the world.",poster:"",imdb_id:"tt7660850",seasons:"4",rated:"TV-MA"},
+  {folder:"Arcane",title:"Arcane",year:"2021–2024",genre:"Animation, Action, Adventure",imdb:"9.0",votes:"379,162",plot:"Set in the League of Legends universe, the origins of two iconic champions.",poster:"",imdb_id:"tt11126994",seasons:"2",rated:"TV-14"},
+  {folder:"Shogun.2024",title:"Shōgun",year:"2024",genre:"Action, Drama, History",imdb:"8.6",votes:"214,355",plot:"A samurai lord battles to become supreme ruler of feudal Japan.",poster:"",imdb_id:"tt2788316",seasons:"1",rated:"TV-MA"},
+  {folder:"Lost",title:"Lost",year:"2004–2010",genre:"Adventure, Drama, Fantasy",imdb:"8.3",votes:"616,030",plot:"Survivors of a plane crash are forced to work together to survive.",poster:"",imdb_id:"tt0411008",seasons:"6",rated:"TV-14"},
+  {folder:"Firefly",title:"Firefly",year:"2002–2003",genre:"Adventure, Drama, Sci-Fi",imdb:"9.0",votes:"251,890",plot:"Five hundred years in the future, a renegade crew aboard a small spacecraft.",poster:"",imdb_id:"tt0303461",seasons:"1",rated:"TV-14"},
+  {folder:"Better.Call.Saul",title:"Better Call Saul",year:"2015–2022",genre:"Crime, Drama",imdb:"9.0",votes:"534,882",plot:"The story of Jimmy McGill's transformation into shady lawyer Saul Goodman.",poster:"",imdb_id:"tt3032476",seasons:"6",rated:"TV-MA"},
+  {folder:"Dark",title:"Dark",year:"2017–2020",genre:"Crime, Drama, Mystery",imdb:"8.8",votes:"322,141",plot:"A family saga with a supernatural twist, set in a German town.",poster:"",imdb_id:"tt5753856",seasons:"3",rated:"TV-MA"},
+];
+
+let data = [];
+let sortField = 'title';
+let sortDir   = 'asc';
+let searchVal = '';
+let genreFilter = '';
+let epFilter = '';
+
+function ratingColor(v) {
+  if (v >= 8.0) return 'fill-high';
+  if (v >= 6.0) return 'fill-mid';
+  if (v >= 1.0) return 'fill-low';
+  return 'fill-none';
+}
+
+function genreHTML(g) {
+  if (!g || g === 'N/A') return '';
+  return g.split(',').slice(0,3).map(t => `<span class="genre-tag">${t.trim()}</span>`).join('');
+}
+
+function numVal(v) {
+  if (!v || v === 'N/A') return -1;
+  return parseFloat(v.replace(/,/g,'')) || -1;
+}
+
+function sortedFiltered() {
+  let rows = data.filter(r => {
+    const q = searchVal.toLowerCase();
+    if (q && !r.title.toLowerCase().includes(q) && !r.folder.toLowerCase().includes(q)) return false;
+    if (genreFilter && !r.genre.includes(genreFilter)) return false;
+    if (epFilter === 'missing' && !(r.episode_check && r.episode_check.has_missing)) return false;
+    if (epFilter === 'complete' && !(r.episode_check && !r.episode_check.has_missing && r.episode_check.seasons_on_disk.length > 0)) return false;
+    if (epFilter === 'unchecked' && r.episode_check) return false;
+    return true;
+  });
+
+  rows.sort((a,b) => {
+    let va, vb;
+    if (sortField === 'title') {
+      va = (a.display_name || a.title).toLowerCase();
+      vb = (b.display_name || b.title).toLowerCase();
+      return sortDir === 'asc' ? va.localeCompare(vb, 'de') : vb.localeCompare(va, 'de');
+    } else if (sortField === 'year') {
+      va = parseInt(a.year) || 0;
+      vb = parseInt(b.year) || 0;
+    } else if (sortField === 'imdb') {
+      va = numVal(a.imdb);
+      vb = numVal(b.imdb);
+    } else if (sortField === 'votes') {
+      va = numVal(a.votes);
+      vb = numVal(b.votes);
+    } else if (sortField === 'seasons') {
+      va = parseInt(a.seasons) || 0;
+      vb = parseInt(b.seasons) || 0;
+    } else if (sortField === 'episodes') {
+      // sort by episode status: missing first (desc) or complete first (asc)
+      // use a numeric score: missing → number of missing eps, complete → 0, no check → -1
+      function epScore(r) {
+        const ec = r.episode_check;
+        if (!ec || ec.seasons_on_disk.length === 0) return -1;
+        if (!ec.has_missing) return 0;
+        let total = 0;
+        for (const s in ec.season_details) total += ec.season_details[s].missing.length;
+        return total;
+      }
+      va = epScore(a);
+      vb = epScore(b);
+    }
+    return sortDir === 'asc' ? va - vb : vb - va;
+  });
+  return rows;
+}
+
+function epStatusHTML(r, idx) {
+  const ec = r.episode_check;
+  if (!ec) return '<span class="ep-none">—</span>';
+  if (ec.seasons_on_disk.length === 0) return '<span class="ep-none">no files</span>';
+  if (ec.has_missing) {
+    let totalMissing = 0;
+    for (const s in ec.season_details) {
+      totalMissing += ec.season_details[s].missing.length;
+    }
+    return `<span class="ep-warn" onclick="toggleEpDetail(${idx})">${totalMissing} missing ▾</span>`;
+  }
+  return '<span class="ep-ok">complete</span>';
+}
+
+function epDetailRow(r, idx) {
+  const ec = r.episode_check;
+  if (!ec || !ec.season_details) return '';
+  const seasons = Object.keys(ec.season_details).sort((a,b) => parseInt(a) - parseInt(b));
+  const lines = seasons.map(s => {
+    const d = ec.season_details[s];
+    const label = `S${String(s).padStart(2,'0')}`;
+    if (d.missing.length > 0) {
+      const epsStr = d.missing.map(e => `E${String(e).padStart(2,'0')}`).join(', ');
+      return `<div class="season-row"><span class="season-label">${label}</span> ${d.found}/${d.expected} — <span class="missing-eps">missing: ${epsStr}</span></div>`;
+    }
+    return `<div class="season-row"><span class="season-label">${label}</span> <span class="complete-eps">${d.found}/${d.expected} ✓</span></div>`;
+  }).join('');
+  return `<tr class="ep-detail" id="ep-detail-${idx}"><td colspan="10">${lines}</td></tr>`;
+}
+
+function toggleEpDetail(idx) {
+  const el = document.getElementById('ep-detail-' + idx);
+  if (el) el.classList.toggle('open');
+}
+
+function render() {
+  const rows = sortedFiltered();
+  const tbody = document.getElementById('tbody');
+  document.getElementById('stats').textContent = `${rows.length} / ${data.length} series`;
+  tbody.innerHTML = rows.map((r, i) => {
+    const imdbNum = parseFloat(r.imdb);
+    const hasRating = !isNaN(imdbNum);
+    const barWidth = hasRating ? (imdbNum / 10 * 100).toFixed(1) : 0;
+    const colorCls = hasRating ? ratingColor(imdbNum) : 'fill-none';
+    const titleEl = escHtml(r.display_name || r.title);
+
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td class="poster-cell">${r.poster && r.poster !== 'N/A'
+        ? `<img src="${r.poster}" alt="" loading="lazy" />`
+        : `<div class="poster-placeholder">📺</div>`
+      }</td>
+      <td class="title-cell">
+        <div class="title-main" ${r.plot ? `data-plot="${escAttr(r.plot)}"` : ''}>${titleEl}</div>
+        <div class="title-folder">${escHtml(r.folder)}</div>
+        <div class="title-links">
+          ${r.imdb_id ? `<a class="link-imdb" href="https://www.imdb.com/title/${r.imdb_id}/" target="_blank" rel="noopener">IMDb</a>` : ''}
+          ${r.tmdb_id ? `<a class="link-tmdb" href="https://www.themoviedb.org/${r.tmdb_type === 'movie' ? 'movie' : 'tv'}/${r.tmdb_id}" target="_blank" rel="noopener">TMDB</a>` : ''}
+        </div>
+      </td>
+      <td>${escHtml(r.year)}</td>
+      <td class="rating-cell">${hasRating
+        ? `<span class="star">★</span><span class="rating-val">${r.imdb}</span>`
+        : `<span class="rating-na">N/A</span>`
+      }</td>
+      <td>
+        <div class="rating-bar-wrap">
+          <div class="rating-bar-bg">
+            <div class="rating-bar-fill ${colorCls}" style="width:${barWidth}%"></div>
+          </div>
+          <span style="color:var(--muted);font-size:10px;width:28px">${hasRating ? imdbNum.toFixed(1) : '—'}</span>
+        </div>
+      </td>
+      <td class="votes">${r.votes !== 'N/A' ? r.votes : '—'}</td>
+      <td>${genreHTML(r.genre)}</td>
+      <td class="seasons">${r.seasons !== 'N/A' ? r.seasons : '—'}</td>
+      <td class="ep-status">${epStatusHTML(r, i)}</td>
+    </tr>${epDetailRow(r, i)}`;
+  }).join('');
+
+  // Update header sort indicators
+  document.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === sortField) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function populateGenres() {
+  const genres = new Set();
+  data.forEach(r => {
+    if (r.genre && r.genre !== 'N/A') r.genre.split(',').forEach(g => genres.add(g.trim()));
+  });
+  const sel = document.getElementById('genre-filter');
+  sel.innerHTML = '<option value="">All genres</option>' +
+    [...genres].sort().map(g => `<option value="${g}">${g}</option>`).join('');
+}
+
+function loadData(d) {
+  data = d;
+  document.getElementById('main-content').style.display = 'block';
+  populateGenres();
+  render();
+}
+
+// Controls
+document.getElementById('search').addEventListener('input', e => { searchVal = e.target.value; render(); });
+document.getElementById('genre-filter').addEventListener('change', e => { genreFilter = e.target.value; render(); });
+document.getElementById('ep-filter').addEventListener('change', e => { epFilter = e.target.value; render(); });
+document.getElementById('sort-field').addEventListener('change', e => { sortField = e.target.value; render(); });
+document.getElementById('sort-dir').addEventListener('change', e => { sortDir = e.target.value; render(); });
+document.getElementById('reset-btn').addEventListener('click', () => {
+  searchVal = ''; genreFilter = ''; epFilter = ''; sortField = 'title'; sortDir = 'asc';
+  document.getElementById('search').value = '';
+  document.getElementById('genre-filter').value = '';
+  document.getElementById('ep-filter').value = '';
+  document.getElementById('sort-field').value = 'imdb';
+  document.getElementById('sort-dir').value = 'desc';
+  render();
+});
+
+// Column header click to sort
+document.getElementById('thead').addEventListener('click', e => {
+  const th = e.target.closest('th[data-col]');
+  if (!th) return;
+  const col = th.dataset.col;
+  if (sortField === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortField = col;
+    sortDir = col === 'title' ? 'asc' : 'desc';
+  }
+  document.getElementById('sort-field').value = sortField;
+  document.getElementById('sort-dir').value = sortDir;
+  render();
+});
+
+// Auto-load
+fetch('../json/serien.json')
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(d => loadData(d))
+  .catch(() => {
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('error-bar').style.display = 'flex';
+  });
+</script>
+</body>
+</html>
